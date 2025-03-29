@@ -5,7 +5,7 @@ import os
 import logging
 import openai
 from openai import OpenAI
-from openai.types.error import OpenAIError
+from openai.types.errors import OpenAIError  # Correct path!
 
 logging.basicConfig(level=logging.INFO)
 
