@@ -3,8 +3,9 @@ load_dotenv()
 
 import os
 import logging
+import streamlit as st
 import openai
-from openai import OpenAIError
+from openai import OpenAI  # <-- THIS IS MISSING!
 
 logging.basicConfig(level=logging.INFO)
 
