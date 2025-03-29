@@ -4,8 +4,7 @@ load_dotenv()
 import os
 import logging
 import openai
-from openai import OpenAI
-from openai.types.errors import OpenAIError  # Correct path!
+from openai import OpenAIError
 
 logging.basicConfig(level=logging.INFO)
 
