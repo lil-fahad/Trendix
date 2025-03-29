@@ -9,7 +9,8 @@ from openai import OpenAIError
 logging.basicConfig(level=logging.INFO)
 
 # Initialize OpenAI client
-api_key = os.getenv('OPENAI_API_KEY')
+import streamlit as st
+api_key = st.secrets["OPENAI_API_KEY"]
 if not api_key:
     logging.error('OPENAI_API_KEY is not set in environment variables.')
     raise EnvironmentError('Missing OpenAI API key.')
