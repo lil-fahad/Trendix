@@ -3,7 +3,8 @@ load_dotenv()
 
 import os
 import logging
-from openai import OpenAI, error
+import openai
+from openai.error import OpenAIError
 
 logging.basicConfig(level=logging.INFO)
 
