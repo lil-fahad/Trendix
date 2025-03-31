@@ -13,3 +13,4 @@ uvicorn
 fastapi
 watchdog
 xgboost
+tensorflow==2.14.0
