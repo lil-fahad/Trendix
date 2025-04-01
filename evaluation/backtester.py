@@ -1,41 +1,45 @@
-import logging
-logging.basicConfig(level=logging.INFO)
+
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-def backtest_from_csv(csv_path, close_column="Close", split_year=2023):
-    """
-    وظيفة: backtest_from_csv
-    """
-    df = pd.read_csv(csv_path, parse_dates=["Date"])
-    df = df.set_index("Date")
-    df = df.sort_index()
+class AdvancedBacktester:
+    def __init__(self, initial_cash=100000, transaction_cost=0.001):
+        self.initial_cash = initial_cash
+        self.transaction_cost = transaction_cost
 
-    train = df[df.index.year < split_year]
-    test = df[df.index.year == split_year]
+    def run_walkforward(self, df, prediction_col, price_col='Close', window=60):
+        df = df.copy()
+        df['Position'] = 0
+        df['Returns'] = df[price_col].pct_change().shift(-1)
+        df['Signal'] = np.where(df[prediction_col].shift(1) > df[price_col].shift(1), 1, -1)
 
-    if len(test) < 10:
-        raise ValueError("بيانات الاختبار قليلة جدًا.")
+        for i in range(window, len(df)):
+            df.loc[df.index[i], 'Position'] = df['Signal'].iloc[i]
 
-    test["Predicted"] = test[close_column].shift(1)
+        df['Strategy_Returns'] = df['Returns'] * df['Position']
+        df['Strategy_Returns'] -= self.transaction_cost * np.abs(df['Position'].diff().fillna(0))
 
-    mae = mean_absolute_error(test[close_column][1:], test["Predicted"][1:])
-    rmse = mean_squared_error(test[close_column][1:], test["Predicted"][1:], squared=False)
-    direction = np.mean(np.sign(np.diff(test[close_column])) == np.sign(np.diff(test["Predicted"]))) * 100
+        df['Equity'] = (1 + df['Strategy_Returns']).cumprod() * self.initial_cash
+        df['BuyHold'] = (1 + df['Returns']).cumprod() * self.initial_cash
+        return df
 
-    logging.info(f"MAE: {mae:.2f}")
-    logging.info(f"RMSE: {rmse:.2f}")
-    logging.info(f"دقة الاتجاه: {direction:.2f}%")
+    def calculate_metrics(self, df):
+        strategy = df['Strategy_Returns'].dropna()
+        buyhold = df['Returns'].dropna()
 
-    plt.figure(figsize=(14,6))
-    plt.plot(test.index, test[close_column], label="فعلي")
-    plt.plot(test.index, test["Predicted"], label="توقع", linestyle="--")
-    plt.title("Backtest توقع السعر")
-    plt.legend()
-    plt.grid()
-    plt.tight_layout()
-    plt.show()
+        def sharpe(returns):
+            return np.sqrt(252) * returns.mean() / returns.std() if returns.std() else 0
 
-    return test[["Predicted", close_column]]
+        def sortino(returns):
+            downside = returns[returns < 0]
+            return np.sqrt(252) * returns.mean() / downside.std() if downside.std() else 0
+
+        max_dd = (df['Equity'].cummax() - df['Equity']).max()
+        metrics = {
+            'Total Return (%)': (df['Equity'].iloc[-1] / df['Equity'].iloc[0] - 1) * 100,
+            'Buy & Hold Return (%)': (df['BuyHold'].iloc[-1] / df['BuyHold'].iloc[0] - 1) * 100,
+            'Sharpe Ratio': sharpe(strategy),
+            'Sortino Ratio': sortino(strategy),
+            'Max Drawdown ($)': max_dd
+        }
+        return metrics
